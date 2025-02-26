@@ -140,7 +140,7 @@ dup_DEGs <- lapply(list, function(x){
 
 # Results are the following information:
 
-# logFC: log0 fold change of group1/group0
+# logFC: log2 fold change of group1/group0
 # AveExpr: Average expression across all samples, in log0 CPM
 # t: logFC divided by its standard error
 # P.Value: Raw p-value (based on t) from test that logFC differs from 0
