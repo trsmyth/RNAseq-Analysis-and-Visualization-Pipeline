@@ -1,0 +1,395 @@
+rm(list = ls(all.names = TRUE)) # clears global environ.
+
+# Load packages
+library(tidyverse) # for data cleaning
+library(dplyr) 
+library(formattable)
+library(ComplexHeatmap)
+library(circlize)
+library(readxl)
+library(parallelpam)
+
+##########################
+### Import IPA results ###
+##########################
+
+wd = paste0(getwd(), '/Output/IPA Results')
+
+# Create a list of the files from your target directory
+file_list <- list.files(path = wd)
+
+list <- list()
+
+# Read each .csv and save to list
+for (i in 1:length(file_list)){
+  
+  list[[i]] <- read_excel(paste0(wd, 
+                                 '/',
+                                 file_list[i]), 
+                          col_types = 'text')
+}
+
+# Set the names in the list to match the IPA files without .csv
+names(list) <- substr(file_list, 
+                      1, 
+                      nchar(file_list) - 4)
+
+# Remove the first 21 rows of each object which contains IPA metadata
+list <- lapply(list, function(x){
+  
+  tmp <- data.frame(x[-c(1:21), ]) # Remove first 21 rows
+  row.names(tmp) = seq(1, nrow(tmp), by = 1) # Set rownames to sequential order of 1 to nrow
+  tmp
+  
+})
+
+########################################################################################
+### First, check to see if all of the normal IPA readouts are present in your files. ###
+########################################################################################
+
+IPA_Results <- lapply(list, function(x){
+  
+  # ID the row and column number with the indicated text
+  # These correspond to the IPA readouts
+  Analysis <- which(x == 'Analysis', arr.ind = TRUE)
+  Master_Regulator <- which(x == 'Master Regulator', arr.ind = TRUE)
+  Categories <- which(x == 'Categories', arr.ind = TRUE)
+  Consistency_Score <- which(x == 'Consistency Score', arr.ind = TRUE)
+  ID <- which(x == 'ID', arr.ind = TRUE)
+  Ingenuity_Toxicity_Lists <- which(x == 'Ingenuity Toxicity Lists', arr.ind = TRUE)
+  ID2 <- as.numeric(ID[2]) # ID2 is the second indexed position of ID above
+  
+  # Put all indexed positions into one list
+  x <- list(Analysis,
+            Master_Regulator,
+            Categories,
+            Consistency_Score,
+            ID,
+            Ingenuity_Toxicity_Lists,
+            ID2)
+  
+  # Rename list objects to match what it is
+  names(x) <- c('Analysis',
+                'Master_Regulator',
+                'Categories',
+                'Consistency_Score',
+                'ID',
+                'Ingenuity_Toxicity_Lists',
+                'ID2')
+  
+  
+  # Save the length of each object in the list
+  y <- data.frame((lengths(x)))
+  
+  # Print any rownames in the list which have no indexed positions
+  print(rownames(y %>% filter_all(any_vars(. %in% c(0)))))
+  
+  # Save list x to IPA_Results[[x]]
+  x
+  
+})
+
+# If any files have to be removed for manual filtering, add the name here
+list <- list[list != '']
+
+##################################################
+### Segregate IPA readouts based on subheading ###
+##################################################
+
+IPA_Results <- lapply(list, function(x){
+  
+  # ID the row and column number with the indicated text
+  # These correspond to the IPA readouts
+  Analysis <- which(x == 'Analysis', arr.ind = TRUE)
+  Master_Regulator <- which(x == 'Master Regulator', arr.ind = TRUE)
+  Categories <- which(x == 'Categories', arr.ind = TRUE)
+  
+  # Consistency_Score <- which(x == 'Consistency Score', arr.ind = TRUE)
+  
+  ID <- which(x == 'ID', arr.ind = TRUE)
+  Ingenuity_Toxicity_Lists <- which(x == 'Ingenuity Toxicity Lists', arr.ind = TRUE)
+  
+  # ID2 is the second indexed position of ID above
+  ID2 <- as.numeric(ID[2])
+  
+  # Subset from row 1 to 2 rows before 'Analysis' text (last data point)
+  Ingenuity_Canonical_Pathways <- x[c(1:as.numeric(Analysis[1]-2)),c(1:ncol(x))] 
+  
+  # Subset from first row matching 'Analysis' to 2 rows before 'Master Regulator
+  Analysis <- x[c(as.numeric(Analysis[1]):as.numeric(Master_Regulator[1]-2)), c(1:ncol(x))] 
+  
+  Master_Regulator <- x[c(as.numeric(Master_Regulator[1]):as.numeric(Categories[1]-2)), c(1:ncol(x))]
+  
+  # Categories <- x[c(as.numeric(Categories[1]):as.numeric(Consistency_Score[1]-2)), c(1:ncol(x))]
+  Categories <- x[c(as.numeric(Categories[1]):as.numeric(ID[1]-2)), c(1:ncol(x))]
+  
+  # Consistency_Score <- x[c(as.numeric(Consistency_Score[1]):as.numeric(ID[1]-2)),c(1:ncol(x))]
+  
+  ID <- x[c(as.numeric(ID[1]):as.numeric(Ingenuity_Toxicity_Lists[1]-2)), c(1:ncol(x))]
+  
+  Ingenuity_Toxicity_Lists <- x[c(as.numeric(Ingenuity_Toxicity_Lists[1]):as.numeric(ID2-2)), c(1:ncol(x))]
+  
+  ID2 <- x[c(as.numeric(ID2):nrow(x)), c(1:ncol(x))]
+  
+  # Combine all isolated readouts into one list
+  tmp <- list(Ingenuity_Canonical_Pathways, 
+              Analysis, 
+              Master_Regulator, 
+              Categories, 
+              # Consistency_Score, 
+              ID, 
+              Ingenuity_Toxicity_Lists, 
+              ID2)
+  
+  # Rename list objects to match what it is
+  names(tmp) <- c('Ingenuity_Canonical_Pathways',
+                  'Analysis',
+                  'Master_Regulator',
+                  'Categories',
+                  # 'Consistency_Score',
+                  'ID',
+                  'Ingenuity_Toxicity_Lists',
+                  'ID2')
+  
+  # Organize each object from the list
+  tmp <- lapply(names(tmp), function(y){
+    
+    names(tmp[[y]]) <- lapply(tmp[[y]][1, ], as.character) # Set colnames of object to first row of object
+    tmp[[y]] <- as.data.frame(tmp[[y]][-1, ]) # Remove first row, which contained the colnames
+    keep.cols <- names(tmp[[y]]) %in% c("") # Keep columns with names (contain data)
+    tmp[[y]] <- tmp[[y]][!keep.cols] # Keep columns with names (contain data)
+    row.names(tmp[[y]]) = seq(1, nrow(tmp[[y]]), by = 1) # Set rownames to 1 to nrow in sequential order
+    tmp[[y]] # Save modified object to list
+    
+  })
+  
+  # Rename list objects to match what it is
+  names(tmp) <- c('Ingenuity_Canonical_Pathways',
+                  'Analysis',
+                  'Master_Regulator',
+                  'Categories',
+                  # 'Consistency_Score',
+                  'ID',
+                  'Ingenuity_Toxicity_Lists',
+                  'ID2')
+  
+  tmp
+  
+})
+
+#########################################################
+### Isolate the top canonical pathways for each group ###
+#########################################################
+
+# # If any csv files had to be manually sorted, import it here
+# sorted <- read.csv('.csv')
+# 
+# # Remake IPA_Results list
+# # Here, IPA_Results[[x]][[y]] corresponds to data frame x, readout y (as described above)
+# IPA_Results <- list(IPA_Results[[1]][[1]],
+#                     # sorted,
+#                     IPA_Results[[2]][[1]],
+#                     IPA_Results[[3]][[1]],
+#                     IPA_Results[[4]][[1]],
+#                     IPA_Results[[5]][[1]]
+#                     # ...
+#                     IPA_Results[[n]][[1]])
+
+Results <- lapply(names(IPA_Results), function(x){
+  
+  # Isolate the first position of the IPA results (Canonical Pathways)
+  tmp <- IPA_Results[[x]][[1]]
+  
+  colnames(tmp) <- c('Pathway', 
+                     'Neg.log.10.p', 
+                     'zScore', 
+                     'Ratio')
+  
+  # Set to numeric
+  tmp$zScore <- as.numeric(tmp$zScore) 
+  tmp$Neg.log.10.p <- as.numeric(tmp$Neg.log.10.p)
+  tmp$Ratio <- as.numeric(tmp$Ratio)
+  
+  # Round to 3 digits
+  tmp$zScore <- round(tmp$zScore, 3)
+  
+  # Reorganize data and keep only significantly different pathways
+  tmp <- tmp[, c(1, 3, 4, 2)] %>% 
+    subset(tmp$Neg.log.10.p >= 1.3)
+  
+  tmp <- tmp %>% arrange(desc(abs(zScore)))
+  
+  # Set names of columns
+  colnames(tmp) <- c('Pathway',
+                     paste0(as.character(x), ' zScore'),
+                     paste0(as.character(x), ' Ratio'),
+                     paste0(as.character(x), ' Neg.log.10.p'))
+  
+  # Save the results to Canonical list
+  tmp[1:10, ]
+  
+})
+
+# Set names of list object to corresponding source
+names(Results) <- substr(file_list, 
+                         1, 
+                         nchar(file_list) - 4)
+
+################################################################################
+### With the top 10 pathways for each comparison, we can merge them together ###
+############ and visualize the activation z-scores between groups. #############
+################################################################################
+
+# Merge results together
+zScore <- Reduce(function(x, y) merge(x, y, all = TRUE), Results)
+zScore <- data.frame(zScore[, c(2, 5, 8, 11, 14, 17)], row.names = zScore$Pathway)
+
+# Replace NA z-score values with random values
+# If you have a real data set, remove this step!
+zScore[is.na(zScore)] <- sample(seq(-4, 4, by = 0.1), sum(is.na(zScore)), replace = TRUE) %>% round(2)
+
+# Remove groups with no variance between comparisons
+Remove <- zScore %>% filter_all(all_vars(is.na(.))) %>% rownames()
+zScore <- zScore[!(row.names(zScore) %in% Remove), ]
+
+var <- as.data.frame(sapply(as.data.frame(t(zScore)), var))
+var <- var %>% subset(var[, 1] == 0)
+
+zScore <- zScore[!(row.names(zScore) %in% row.names(var)), ]
+
+# Rename and reorder columns if desired
+colnames(zScore) <- names(Results)
+
+# zScore <- zScore[, c()]
+
+# Run partition around medoid clustering to create clusters by pathway similarities
+parallelpam::JWriteBin(as.matrix(zScore),
+                       "group_pam.bin",
+                       dtype="float",
+                       dmtype="full")
+
+CalcAndWriteDissimilarityMatrix("group_pam.bin", 
+                                "group_pam2.bin",
+                                distype = "L2", 
+                                restype = "float",
+                                comment = "L2 distance for vectors in jmatrix file vst_results_group.bin", 
+                                nthreads = 8) # 8 threads on desktop, 16 on laptop
+
+JMatInfo("group_pam2.bin")
+
+group_pam = ApplyPAM("group_pam2.bin", 
+                     k = 4,
+                     init_method = "BUILD", 
+                     max_iter = 1000, 
+                     nthreads = 8)
+
+# Set color scheme and breaks
+myCol <- colorRamp2(c(-5, 0, 5), hcl_palette = "Vik")
+
+hmap1 <- Heatmap(as.matrix(zScore),
+                 
+                 # Split the rows according to the PAM clusters
+                 split = group_pam$clasif,
+                 cluster_row_slices = TRUE,
+                 gap = unit(2, "mm"),
+                 border = TRUE,
+                 width = ncol(zScore) * unit(50, 'mm'), 
+                 height = ncol(zScore) * unit(100, 'mm'),
+                 
+                 name = 'Canonical Pathway\nZ-Score',
+                 
+                 # Set the color scheme
+                 col = myCol,
+                 
+                 # Create a color for NA values if present
+                 na_col = "pink",
+                 
+                 # Add Z-score values to cells
+                 # If z-scores are above or below certain values, 
+                 # change the color of the text to make the text more visible
+                 cell_fun = function(j, i, x, y, width, height, fill) {
+                   grid.text(sprintf("%.1f", zScore[i, j]), x, y, gp = gpar(fontsize = 24, 
+                                                                            col = if_else(zScore[i, j] < 3 & 
+                                                                                            zScore[i, j] > -3 | 
+                                                                                            is.na(zScore[i, j]) == TRUE, 
+                                                                                          'black', 
+                                                                                          'white'),
+                                                                            fontface = 'bold'))},
+                 
+                 # parameters for the color-bar that represents gradient of expression
+                 heatmap_legend_param = list(
+                   color_bar = 'continuous',
+                   at = c(-5, -2.5, 0, 2.5, 5),
+                   legend_direction = 'horizontal',
+                   legend_width = unit(15, 'cm'),
+                   legend_height = unit(10.0, 'cm'),
+                   title_position = 'topcenter',
+                   title_gp = gpar(fontsize = 24, fontface = 'bold'),
+                   labels_gp = gpar(fontsize = 20, fontface = 'bold')),
+                 
+                 # row (gene) parameters
+                 cluster_rows = TRUE,
+                 show_row_dend = TRUE,
+                 row_title_side = 'right',
+                 row_title_gp = gpar(fontsize = 12,  fontface = 'bold'),
+                 show_row_names = TRUE,
+                 row_names_gp = gpar(fontsize = 20, fontface = 'bold'),
+                 row_names_side = 'right',
+                 row_dend_width = unit(25,'mm'),
+                 
+                 # column (sample) parameters
+                 cluster_columns = TRUE,
+                 show_column_dend = TRUE,
+                 column_title = '',
+                 column_title_side = 'bottom',
+                 column_title_gp = gpar(fontsize = 12, fontface = 'bold'),
+                 show_column_names = TRUE,
+                 column_names_gp = gpar(fontsize = 30, fontface = 'bold'),
+                 column_names_rot = 45,
+                 column_names_max_height = unit(10, 'cm'),
+                 column_dend_height = unit(25,'mm'))
+
+png(file = "Heatmap.png", height = 3000, width = 2500)
+
+draw(hmap1,
+     heatmap_legend_side = 'bottom',
+     annotation_legend_side = 'right')
+
+dev.off()
+
+################################################################################################
+### Another way to visualize the pathway results are to make bar graphs for each comparison. ###
+##### This gives the added advantage of presenting two metrics (any combination of zScore, #####
+###### gene ratio, and p-value) by placing one on the axis and using one to fill the bar. ######
+################################################################################################
+
+lapply(names(Results), function(x){
+  
+  tmp <- Results[[x]]
+  
+  names(tmp) <- c('Pathway', 'zScore', 'Ratio', 'Neg.log.10.p')
+  
+  tmp$zScore <- zScore[tmp$Pathway, x]
+  
+  max <- ceiling(max(abs(tmp$zScore)))
+  
+  tmp$Pathway <- factor(tmp$Pathway, 
+                        levels = tmp$Pathway)
+  
+  plot <- ggplot(tmp, 
+                 aes(x = Ratio, 
+                     y = Pathway, 
+                     fill = zScore)) +
+    
+    geom_bar(stat = 'identity') + 
+    
+    scale_fill_gradientn(
+      colours = c("darkred", "tomato", "white", "lightblue", "blue"),
+      breaks = c(-max, -max/2, 0, max/2, max),
+      limits = c(-max, max)) + 
+    
+    scale_y_discrete(limits = rev) +
+    
+    labs(title = paste0(as.character(x)))
+  
+})
