@@ -179,10 +179,15 @@ for(i in 1:length(Sig_GO[["Term"]])){
 
 names(Gene_sets) <- Sig_GO[["Term"]]
 
+library(BiocParallel)
+
+param = SnowParam(10, "SOCK", progressbar = TRUE, exportglobals = FALSE)
+
+# Create gsva parameter object
+Parameters <- gsvaParam(lcpm, GeneSetCollection(Gene_sets), minSize = 2)
+
 # Run GSVA on each pathways
-GSVA_results <- gsva(lcpm,
-                     GeneSetCollection(Gene_sets), 
-                     min.sz = 1)
+GSVA_results <- gsva(Parameters, verbose = FALSE, BPPARAM = param)
 
 GSVA_results <- cbind(GSVA_results@phenoData@data,
                       t(GSVA_results@assayData[["exprs"]]))
@@ -476,4 +481,5 @@ draw(hmap,
      heatmap_legend_side = 'bottom')
 
 dev.off()
+
 ```
