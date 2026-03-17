@@ -54,7 +54,6 @@ Following differential expression and IPA, it is often useful to visualize gene 
 ## 4.	Gene Ontology and Gene Set Variation Analysis
 
 In conjunction with IPA, a more general approach to investigating broader patterns in RNAseq data are gene set enrichment approaches. Here, gene ontology (GO) enrichment followed by gene set variation analysis is conducted. GO terms are curated lists of genes linked to specific cellular and biological processes, allowing for the assessment of sets of genes which are known to be related. Differentially expressed genes are used to determine which GO gene sets are enriched before gene set variation analysis is used to test those gene sets for particular enrichment or suppression compared to other groups. Resulting GSVA values can easily be visualized using heatmaps to quickly compare pathway activity levels.
-
 <p align="center">
   <img width="644" height="600" alt="image" src="https://github.com/user-attachments/assets/1a553f38-28bf-4dd5-9ac8-6fc181b08460" />
 </p>
