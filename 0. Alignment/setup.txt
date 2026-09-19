@@ -1,0 +1,3 @@
+curl -o ./data/Homo_sapiens.GRCh38.cdna.all.fa.gz https://ftp.ensembl.org/pub/release-116/fasta/homo_sapiens/cdna/Homo_sapiens.GRCh38.cdna.all.fa.gz
+curl -o ./data/Homo_sapiens.GRCh38.116.gtf.gz https://ftp.ensembl.org/pub/release-116/gtf/homo_sapiens/Homo_sapiens.GRCh38.116.gtf.gz
+kallisto index --index ./data/transcriptome.idx ./data/Homo_sapiens.GRCh38.cdna.all.fa.gz
