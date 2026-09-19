@@ -1,6 +1,10 @@
 # RNAseq-Analysis-and-Visualization-Pipeline
 This repository and the included tutorial were created to speed up initial bulk RNAseq analysis for the Jaspers lab at UNC Chapel Hill, as no unified pipeline had been established despite several researchers independently conducting RNA sequencing projects. As each researcher tended to generate their own analysis pipeline, different techniques were often employed making direct comparisons between datasets complicated. Additionally, each researcher having to create a pipeline from scratch after their first RNAseq project was slow and represented a wasted effort that could have been spent on more in depth analysis of the dataset. This pipeline seeks to accelerate that initial analysis to quickly move on to the more interesting and novel work.
 
+## 0. Alignment
+
+While our data is normally pre-aligned with STAR by the sequencing service, a Nextflow workflow for the QC, trimming, pseudoalignment with Kallisto, and count estimation is provided in case data is needed in an alternative form.
+
 ## 1.	Raw Data Isolation and Cleaning
 
 The Jaspers lab has largely used Genewiz services to conduct sequencing. This initial folder contains code for the ingestion of aligned count data as provided by Genewiz (in multiple .csv files) followed by initial QC checks including MDS and PCA plots as well as correlation dendrograms to identify potential outlier samples. A synthetic dataset was generated within the script to allow for a follow along tutorial here and within the following sections.
